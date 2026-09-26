@@ -1,17 +1,22 @@
+'use client';
+
 import { useState } from 'react';
-import { Download, FileVideo, FileText, FileJson, Settings2 } from 'lucide-react';
-import type { AppStatus, RenderProgress, VideoMeta } from '@/types';
+import { Download, FileVideo, FileText, FileJson, Settings2, Loader2 } from 'lucide-react';
+import type { AppStatus, RenderProgress, Segment, StyleSettings, VideoMeta } from '@/types';
 
 interface ExportPanelProps {
   status: AppStatus;
   progress: RenderProgress | null;
   videoMeta: VideoMeta | null;
+  segments: Segment[];
+  style: StyleSettings;
 }
 
-export function ExportPanel({ status, progress, videoMeta }: ExportPanelProps) {
+export function ExportPanel({ status, progress, videoMeta, segments, style }: ExportPanelProps) {
   const [format, setFormat] = useState<'mp4' | 'srt' | 'json'>('mp4');
   const [resolution, setResolution] = useState<'720p' | '1080p' | 'original'>('original');
   const [burnIn, setBurnIn] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   const formats = [
     { id: 'mp4' as const, label: 'MP4 Video', icon: FileVideo, desc: 'Burned-in subtitles' },
@@ -31,6 +36,37 @@ export function ExportPanel({ status, progress, videoMeta }: ExportPanelProps) {
     progress && progress.totalFrames > 0
       ? Math.round((progress.frame / progress.totalFrames) * 100)
       : 0;
+
+  const handleDownload = async () => {
+    if (format === 'mp4') return;
+
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          format,
+          segments,
+          style,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Export failed');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `subscript_export.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently fail — UI stays usable
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
@@ -74,7 +110,7 @@ export function ExportPanel({ status, progress, videoMeta }: ExportPanelProps) {
 
         {/* Video options */}
         {format === 'mp4' && (
-          <section className="space-y-4 animate-[fadeIn_200ms_ease-smooth]">
+          <section className="space-y-4">
             <div>
               <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
                 Resolution
@@ -145,9 +181,17 @@ export function ExportPanel({ status, progress, videoMeta }: ExportPanelProps) {
             <p className="text-xs text-text-secondary">
               Your {format.toUpperCase()} file is ready to download.
             </p>
-            <button className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-accent-success text-white text-sm font-medium hover:bg-accent-success/90 transition-colors duration-150 ease-smooth">
-              <Download className="w-4 h-4" />
-              Download File
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-accent-success text-white text-sm font-medium hover:bg-accent-success/90 disabled:opacity-60 transition-colors duration-150 ease-smooth"
+            >
+              {downloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {downloading ? 'Preparing...' : 'Download File'}
             </button>
           </section>
         )}

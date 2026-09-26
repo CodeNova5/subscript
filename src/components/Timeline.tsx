@@ -1,3 +1,5 @@
+'use client';
+
 import { useRef } from 'react';
 import type { Segment, VideoMeta } from '@/types';
 import { formatTimeShort } from '@/utils';

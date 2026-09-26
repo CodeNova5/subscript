@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Trash2, Bold, Highlighter, Smile, Clock } from 'lucide-react';
 import type { Segment, Word } from '@/types';

@@ -1,3 +1,5 @@
+'use client';
+
 import { ArrowUp, ArrowDown, Check } from 'lucide-react';
 import type { StyleSettings, PresetId, SubtitlePosition } from '@/types';
 import { PRESETS } from '@/data';

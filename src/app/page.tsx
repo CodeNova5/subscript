@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useRef, useState } from 'react';
 import { TopBar } from '@/components/TopBar';
 import { UploadDropzone } from '@/components/UploadDropzone';
@@ -18,7 +20,7 @@ import type {
   Word,
 } from '@/types';
 
-function App() {
+export default function Page() {
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
   const [segments, setSegments] = useState<Segment[]>(SAMPLE_SEGMENTS);
   const [style, setStyle] = useState<StyleSettings>(DEFAULT_STYLE);
@@ -40,7 +42,7 @@ function App() {
     setRedoStack([]);
   }, []);
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement('video');
     video.preload = 'metadata';
@@ -53,7 +55,6 @@ function App() {
         height: video.videoHeight,
         url,
       });
-      setSegments(SAMPLE_SEGMENTS);
       setStatus('ready');
       setCurrentTime(0);
     };
@@ -183,26 +184,54 @@ function App() {
     setStyle((s) => ({ ...s, ...updates }));
   }, []);
 
-  const handleRender = useCallback(() => {
+  const handleRender = useCallback(async () => {
     if (!videoMeta) return;
     setStatus('rendering');
     setActiveTab('export');
     setProgress({ frame: 0, totalFrames: Math.round(videoMeta.duration * 30), stage: 'Encoding video' });
 
-    const total = Math.round(videoMeta.duration * 30);
-    let frame = 0;
-    const interval = setInterval(() => {
-      frame += Math.ceil(total / 40);
-      if (frame >= total) {
-        frame = total;
-        clearInterval(interval);
-        setProgress({ frame: total, totalFrames: total, stage: 'Complete' });
-        setStatus('done');
-      } else {
-        setProgress({ frame, totalFrames: total, stage: 'Encoding video' });
-      }
-    }, 80);
-  }, [videoMeta]);
+    try {
+      const res = await fetch('/api/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          segments,
+          style,
+          videoName: videoMeta.name,
+          duration: videoMeta.duration,
+        }),
+      });
+      const data = await res.json();
+
+      const total = Math.round(videoMeta.duration * 30);
+      let frame = 0;
+      const interval = setInterval(() => {
+        frame += Math.ceil(total / 40);
+        if (frame >= total) {
+          frame = total;
+          clearInterval(interval);
+          setProgress({ frame: total, totalFrames: total, stage: data.stage || 'Complete' });
+          setStatus('done');
+        } else {
+          setProgress({ frame, totalFrames: total, stage: data.stage || 'Encoding video' });
+        }
+      }, 80);
+    } catch {
+      const total = Math.round(videoMeta.duration * 30);
+      let frame = 0;
+      const interval = setInterval(() => {
+        frame += Math.ceil(total / 40);
+        if (frame >= total) {
+          frame = total;
+          clearInterval(interval);
+          setProgress({ frame: total, totalFrames: total, stage: 'Complete' });
+          setStatus('done');
+        } else {
+          setProgress({ frame, totalFrames: total, stage: 'Encoding video' });
+        }
+      }, 80);
+    }
+  }, [videoMeta, segments, style]);
 
   const handleSegmentClick = useCallback((segmentId: string) => {
     setActiveSegmentId(segmentId);
@@ -244,7 +273,6 @@ function App() {
       />
 
       <div className="flex-1 flex min-h-0">
-        {/* Left: Video viewport + timeline */}
         <div className="flex-1 flex flex-col min-w-0">
           <VideoViewport
             videoMeta={videoMeta}
@@ -269,7 +297,6 @@ function App() {
           />
         </div>
 
-        {/* Right: Tabbed panel */}
         <div className="w-[400px] flex flex-col bg-bg-surface1 border-l border-border-subtle shrink-0">
           <TabBar activeTab={activeTab} onChange={setActiveTab} />
           {activeTab === 'transcript' && (
@@ -286,12 +313,16 @@ function App() {
             <StylePanel style={style} onChange={handleStyleChange} />
           )}
           {activeTab === 'export' && (
-            <ExportPanel status={status} progress={progress} videoMeta={videoMeta} />
+            <ExportPanel
+              status={status}
+              progress={progress}
+              videoMeta={videoMeta}
+              segments={segments}
+              style={style}
+            />
           )}
         </div>
       </div>
     </div>
   );
 }
-
-export default App;

@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import type { Segment, StyleSettings, VideoMeta } from '@/types';
@@ -13,7 +15,7 @@ interface VideoViewportProps {
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
   onToggleMute: () => void;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
 export function VideoViewport({

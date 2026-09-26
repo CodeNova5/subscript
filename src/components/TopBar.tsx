@@ -1,3 +1,5 @@
+'use client';
+
 import { Film, Undo2, Redo2, Play, Loader2, Download } from 'lucide-react';
 import type { AppStatus, VideoMeta } from '@/types';
 import { formatFileSize } from '@/utils';

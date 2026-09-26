@@ -1,3 +1,5 @@
+'use client';
+
 import { Captions, Palette, Download } from 'lucide-react';
 import type { EditorTab } from '@/types';
 
